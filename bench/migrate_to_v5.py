@@ -22,9 +22,9 @@ def remove_shopping_cart(bench='.'):
 	if not os.path.exists(shopping_cart_dir):
 		return
 
-	exec_cmd("{frappe} all --remove_from_installed_apps shopping_cart".format(
-			frappe=get_frappe(bench=bench)),
-			cwd=os.path.join(bench, 'sites'))
+	# exec_cmd("{frappe} all --remove_from_installed_apps shopping_cart".format(
+	# 		frappe=get_frappe(bench=bench)),
+	# 		cwd=os.path.join(bench, 'sites'))
 	remove_from_appstxt('shopping_cart', bench=bench)
 	exec_cmd("{pip} --no-input uninstall -y shopping_cart".format(pip=os.path.join(bench, 'env', 'bin', 'pip')))
 
@@ -43,6 +43,8 @@ def validate_v4(bench='.'):
 def checkout_v5(repo, bench='.'):
 	cwd = os.path.join(bench, 'apps', repo)
 	if os.path.exists(cwd):
+		print cwd
+		print repo
 		exec_cmd("git fetch upstream", cwd=cwd)
 		exec_cmd("git checkout v5.0", cwd=cwd)
 		exec_cmd("git clean -df", cwd=cwd)
