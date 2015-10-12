@@ -5,7 +5,7 @@ The bench allows you to setup Frappe / ERPNext apps on your local Linux (CentOS 
 
 To do this install, you must have basic information on how Linux works and should be able to use the command-line. If you are looking easier ways to get started and evaluate ERPNext, [download the Virtual Machine or take a free trial at FrappeCloud.com](https://erpnext.com/use).
 
-For questions, please join the [developer forum](https://groups.google.com/group/erpnext-developer-forum).
+For questions, please join the [developer forum](https://discuss.frappe.io/).
 
 Installation
 ============
@@ -32,12 +32,13 @@ Manual Install
 
 Install pre-requisites,
 
-* Python 2.7
-* MariaDB
-* Redis
+* [Python 2.7](https://www.python.org/download/releases/2.7/)
+* [MariaDB](https://mariadb.org/)
+* [Redis](http://redis.io/topics/quickstart)
 * [wkhtmltopdf](http://wkhtmltopdf.org/downloads.html) (optional, required for pdf generation)
-* Memcached
-	
+
+[Installing pre-requisites on OSX](https://github.com/frappe/bench/wiki/Installing-Bench-Pre-requisites-on-MacOSX)
+
 Install bench as a *non root* user,
 
 		git clone https://github.com/frappe/bench bench-repo
@@ -92,7 +93,7 @@ Basic Usage
 		bench start
 
 	To login to Frappe / ERPNext, open your browser and go to `localhost:8000`
-	
+
 	The default user name is "Administrator" and password is what you set when you created the new site.
 
 
@@ -105,11 +106,9 @@ To setup a bench that runs ERPNext, run the following commands
 cd ~
 bench init frappe-bench
 cd frappe-bench
-bench get-app erpnext https://github.com/frappe/erpnext				# Add ERPNext to your bench apps
-bench get-app shopping_cart https://github.com/frappe/shopping-cart	# Add Shopping cart to your bench apps
-bench new-site site1.local											# Create a new site
-bench frappe --install_app erpnext site1.local						# Install ERPNext for the site
-bench frappe --install_app shopping_cart site1.local				# Install Shopping cart for the site
+bench get-app erpnext https://github.com/frappe/erpnext			# Add ERPNext to your bench apps
+bench new-site site1.local						# Create a new site
+bench install-app erpnext						# Install ERPNext for the site
 ```
 
 You can now either use `bench start` or setup the bench for production use.
@@ -162,7 +161,7 @@ Frappe Processes
 * WSGI Server
 
 	* The WSGI server is responsible for responding to the HTTP requests to
-	frappe. In development scenario (`frappe --serve` or `bench start`), the
+	frappe. In development scenario (`bench serve` or `bench start`), the
 	Werkzeug WSGI server is used and in production, gunicorn (automatically
 	configured in supervisor) is used.
 
@@ -199,7 +198,7 @@ then copy/link this file to the supervisor config directory and reload it for it
 take effect.
 
 eg,
-	
+
 ```
 bench setup supervisor
 sudo ln -s `pwd`/config/supervisor.conf /etc/supervisor/conf.d/frappe.conf
@@ -207,7 +206,7 @@ sudo ln -s `pwd`/config/supervisor.conf /etc/supervisor/conf.d/frappe.conf
 
 Note: For CentOS 7, the extension should be `ini`, thus the command becomes
 ```
-bench setup supervisor 
+bench setup supervisor
 sudo ln -s `pwd`/config/supervisor.conf /etc/supervisor/conf.d/frappe.ini #for CentOS 7 only
 ```
 

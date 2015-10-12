@@ -16,22 +16,31 @@ get_passwd() {
 }
 
 set_opts () {
-	OPTS=`getopt -o v --long verbose,mysql-root-password:,frappe-user:,setup-production,skip-setup-bench,help -n 'parse-options' -- "$@"`
-	 
+	OPTS=`getopt -o v --long verbose,mysql-root-password:,frappe-user:,bench-branch:,setup-production,skip-setup-bench,help -n 'parse-options' -- "$@"`
+
 	if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
-	 
+
 	eval set -- "$OPTS"
-	 
+
 	VERBOSE=false
 	HELP=false
 	FRAPPE_USER=false
 	BENCH_BRANCH="master"
-	FRAPPE_USER_PASS=`get_passwd`
-	MSQ_PASS=`get_passwd`
-	ADMIN_PASS=`get_passwd`
 	SETUP_PROD=false
 	SETUP_BENCH=true
-	 
+
+	if [ -f ~/frappe_passwords.sh ]; then
+		source ~/frappe_passwords.sh
+	else
+		FRAPPE_USER_PASS=`get_passwd`
+		MSQ_PASS=`get_passwd`
+		ADMIN_PASS=`get_passwd`
+
+		echo "FRAPPE_USER_PASS=$FRAPPE_USER_PASS" > ~/frappe_passwords.sh
+		echo "MSQ_PASS=$MSQ_PASS" >> ~/frappe_passwords.sh
+		echo "ADMIN_PASS=$ADMIN_PASS" >> ~/frappe_passwords.sh
+	fi
+
 	while true; do
 	case "$1" in
 	-v | --verbose ) VERBOSE=true; shift ;;
@@ -48,7 +57,7 @@ set_opts () {
 }
 
 get_distro() {
-	ARCH=$(uname -m | sed 's/x86_/amd/;s/i[3-6]86/x86/') 
+	ARCH=$(uname -m | sed 's/x86_/amd/;s/i[3-6]86/x86/')
 
 	if [ $ARCH == "amd64" ]; then
 		T_ARCH="x86_64"
@@ -56,7 +65,7 @@ get_distro() {
 	else
 		T_ARCH="i386"
 		WK_ARCH="i386"
-	fi 
+	fi
 
 	if [ -f /etc/redhat-release ]; then
 		OS="centos"
@@ -78,7 +87,7 @@ get_distro() {
 	export ARCH=$ARCH
 	export T_ARCH=$T_ARCH
 	export WK_ARCH=$WK_ARCH
-	echo Installing for $OS $OS_VER $ARCH 
+	echo Installing for $OS $OS_VER $ARCH
 	echo "In case you encounter an error, you can post on https://discuss.frappe.io"
 	echo
 }
@@ -87,7 +96,7 @@ run_cmd() {
 	if $VERBOSE; then
 		"$@"
 	else
-		# $@ 
+		# $@
 		"$@" > /tmp/cmdoutput.txt 2>&1 || (cat /tmp/cmdoutput.txt && exit 1)
 	fi
 }
@@ -98,24 +107,24 @@ add_centos6_mariadb_repo() {
 	echo "
 [mariadb]
 name = MariaDB
-baseurl = http://yum.mariadb.org/5.5/centos$OS_VER-$ARCH
+baseurl = http://yum.mariadb.org/10.0/centos$OS_VER-$ARCH
 gpgkey=https://yum.mariadb.org/RPM-GPG-KEY-MariaDB
 gpgcheck=1
 " > /etc/yum.repos.d/mariadb.repo
 }
- 
+
 
 add_ubuntu_mariadb_repo() {
 	run_cmd sudo apt-get update
 	run_cmd sudo apt-get install -y software-properties-common python-software-properties
 	run_cmd sudo apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 0xcbcb082a1bb943db
-	run_cmd sudo add-apt-repository "deb http://ams2.mirrors.digitalocean.com/mariadb/repo/5.5/ubuntu $OS_VER main"
+	run_cmd sudo add-apt-repository "deb http://ams2.mirrors.digitalocean.com/mariadb/repo/10.0/ubuntu $OS_VER main"
 }
 
 add_debian_mariadb_repo() {
 	if [ $OS_VER == "7" ]; then
 		CODENAME="wheezy"
-	
+
 	elif [ $OS_VER == "6" ]; then
 		CODENAME="squeeze"
 	else
@@ -126,15 +135,15 @@ add_debian_mariadb_repo() {
 	run_cmd sudo apt-get update
 	run_cmd sudo apt-get install -y python-software-properties
 	run_cmd sudo apt-key adv --recv-keys --keyserver keyserver.ubuntu.com 0xcbcb082a1bb943db
-	run_cmd sudo add-apt-repository "deb http://ams2.mirrors.digitalocean.com/mariadb/repo/5.5/debian $CODENAME main"
+	run_cmd sudo add-apt-repository "deb http://ams2.mirrors.digitalocean.com/mariadb/repo/10.0/debian $CODENAME main"
 }
 
 add_ius_repo() {
 	if [ $OS_VER -eq "6" ]; then
 	wget http://dl.iuscommunity.org/pub/ius/stable/CentOS/$OS_VER/$T_ARCH/epel-release-6-5.noarch.rpm
-	wget http://dl.iuscommunity.org/pub/ius/stable/CentOS/$OS_VER/$T_ARCH/ius-release-1.0-13.ius.centos6.noarch.rpm
+	wget http://dl.iuscommunity.org/pub/ius/stable/CentOS/$OS_VER/$T_ARCH/ius-release-1.0-14.ius.centos6.noarch.rpm
 	rpm --quiet -q epel-release || rpm -Uvh epel-release-6-5.noarch.rpm
-	rpm --quiet -q ius-release || rpm -Uvh ius-release-1.0-13.ius.centos6.noarch.rpm
+	rpm --quiet -q ius-release || rpm -Uvh ius-release-1.0-14.ius.centos6.noarch.rpm
 	fi
 }
 
@@ -148,12 +157,12 @@ add_maria_db_repo() {
 	elif [ "$OS" == "centos" ]; then
 		echo Adding centos mariadb repo
 		add_centos6_mariadb_repo
-	
-	elif [ "$OS" == "debian" ]; then 
+
+	elif [ "$OS" == "debian" ]; then
 		echo Adding debian mariadb repo
 		add_debian_mariadb_repo
 
-	elif [ "$OS" == "Ubuntu" ]; then 
+	elif [ "$OS" == "Ubuntu" ]; then
 		echo Adding ubuntu mariadb repo
 		add_ubuntu_mariadb_repo
 	else
@@ -162,29 +171,34 @@ add_maria_db_repo() {
 	fi
 }
 
-## install 
+## install
 
 install_packages() {
 	if [ $OS == "centos" ]; then
 		run_cmd sudo yum install wget -y
 		run_cmd sudo yum groupinstall -y "Development tools"
-		if [ $OS_VER == "6" ]; then 
+		if [ $OS_VER == "6" ]; then
 			run_cmd add_ius_repo
-			run_cmd sudo yum install -y git MariaDB-server MariaDB-client MariaDB-compat python-setuptools nginx zlib-devel bzip2-devel openssl-devel memcached postfix python27-devel python27 libxml2 libxml2-devel libxslt libxslt-devel redis MariaDB-devel libXrender libXext python27-setuptools cronie sudo which
+			run_cmd sudo yum install -y git MariaDB-server MariaDB-client MariaDB-compat python-setuptools nginx zlib-devel bzip2-devel openssl-devel postfix python27-devel python27 libxml2 libxml2-devel libxslt libxslt-devel redis MariaDB-devel libXrender libXext python27-setuptools cronie sudo which xorg-x11-fonts-Type1 xorg-x11-fonts-75dpi nodejs npm
 		elif [ $OS_VER == "7" ]; then
 			run_cmd add_epel_centos7
-			run_cmd sudo yum install -y git mariadb-server mariadb-devel python-setuptools nginx zlib-devel bzip2-devel openssl-devel memcached postfix python-devel libxml2 libxml2-devel libxslt libxslt-devel redis libXrender libXext supervisor cronie sudo which xorg-x11-fonts-75dpi xorg-x11-fonts-Type1
+			run_cmd sudo yum install -y git mariadb-server mariadb-devel python-setuptools nginx zlib-devel bzip2-devel openssl-devel postfix python-devel libxml2 libxml2-devel libxslt libxslt-devel redis libXrender libXext supervisor cronie sudo which xorg-x11-fonts-75dpi xorg-x11-fonts-Type1 nodejs npm
 		fi
+
 		echo "Installing wkhtmltopdf"
 		install_wkhtmltopdf_centos
 		run_cmd easy_install-2.7 -U pip
-	
-	
-	elif [ $OS == "debian" ] || [ $OS == "Ubuntu" ]; then 
+
+
+	elif [ $OS == "debian" ] || [ $OS == "Ubuntu" ]; then
 		export DEBIAN_FRONTEND=noninteractive
 		setup_debconf
+		if [ $OS == "debian" ]; then
+			run_cmd bash -c "curl -sL https://deb.nodesource.com/setup_0.12 | bash -"
+		fi
 		run_cmd sudo apt-get update
-		run_cmd sudo apt-get install python-dev python-setuptools build-essential python-mysqldb git memcached ntp vim screen htop mariadb-server mariadb-common libmariadbclient-dev  libxslt1.1 libxslt1-dev redis-server libssl-dev libcrypto++-dev postfix nginx supervisor python-pip fontconfig libxrender1 libxext6 xfonts-75dpi xfonts-base -y
+		run_cmd sudo apt-get install -y python-dev python-setuptools build-essential python-mysqldb git ntp vim screen htop mariadb-server mariadb-common libmariadbclient-dev  libxslt1.1 libxslt1-dev redis-server libssl-dev libcrypto++-dev postfix nginx supervisor python-pip fontconfig libxrender1 libxext6 xfonts-75dpi xfonts-base nodejs npm
+
 		echo "Installing wkhtmltopdf"
 		install_wkhtmltopdf_deb
 
@@ -200,13 +214,13 @@ install_wkhtmltopdf_centos () {
 		echo "Cannot install wkhtmltodpdf. Skipping..."
 		return 0
 	fi
-	RPM="wkhtmltox-0.12.2_linux-$OS$OS_VER-$WK_ARCH.rpm"
-	run_cmd wget http://downloads.sourceforge.net/project/wkhtmltopdf/0.12.2/$RPM
+	RPM="wkhtmltox-0.12.2.1_linux-$OS$OS_VER-$WK_ARCH.rpm"
+	run_cmd wget http://download.gna.org/wkhtmltopdf/0.12/0.12.2.1/$RPM
 	rpm --quiet -q wkhtmltox || run_cmd rpm -Uvh $RPM
 }
 
 install_wkhtmltopdf_deb () {
-	if [[ $OS_VER == "utopic" ]]; then
+	if [[ $OS_VER == "utopic" ||  $OS_VER == "vivid" ]]; then
 		echo "Cannot install wkhtmltodpdf. Skipping..."
 		return 0
 	fi
@@ -215,8 +229,8 @@ install_wkhtmltopdf_deb () {
 	else
 		WK_VER=$OS_VER
 	fi
-	run_cmd wget http://downloads.sourceforge.net/project/wkhtmltopdf/0.12.2/wkhtmltox-0.12.2_linux-$WK_VER-$WK_ARCH.deb
-	run_cmd dpkg -i wkhtmltox-0.12.2_linux-$WK_VER-$WK_ARCH.deb
+	run_cmd wget http://download.gna.org/wkhtmltopdf/0.12/0.12.2.1/wkhtmltox-0.12.2.1_linux-$WK_VER-$WK_ARCH.deb
+	run_cmd dpkg -i wkhtmltox-0.12.2.1_linux-$WK_VER-$WK_ARCH.deb
 }
 
 
@@ -283,7 +297,6 @@ configure_services_centos7() {
 	run_cmd systemctl enable mysql
 	run_cmd systemctl enable redis
 	run_cmd systemctl enable supervisord
-	run_cmd systemctl enable memcached
 }
 
 start_services_centos7() {
@@ -291,7 +304,37 @@ start_services_centos7() {
 	run_cmd systemctl start mysql
 	run_cmd systemctl start redis
 	run_cmd systemctl start supervisord
-	run_cmd systemctl start memcached
+}
+
+configure_mariadb() {
+	config="
+[mysqld]
+innodb-file-format=barracuda
+innodb-file-per-table=1
+innodb-large-prefix=1
+character-set-client-handshake = FALSE
+character-set-server = utf8mb4
+collation-server = utf8mb4_unicode_ci
+
+[mysql]
+default-character-set = utf8mb4
+ "
+	deb_cnf_path="/etc/mysql/conf.d/barracuda.cnf"
+	centos_cnf_path="/etc/my.cnf.d/barracuda.cnf"
+
+	if [ $OS == "centos" ]; then
+
+		echo "$config" > $centos_cnf_path
+		if [ $OS_VER == "6" ]; then
+			run_cmd sudo service mysql restart
+		elif [ $OS_VER == "7" ]; then
+			run_cmd sudo systemctl restart mysql
+		fi
+
+	elif [ $OS == "debian" ] || [ $OS == "Ubuntu" ]; then
+		echo "$config" > $deb_cnf_path
+		sudo service mysql restart
+	fi
 }
 
 setup_debconf() {
@@ -326,17 +369,17 @@ setup_bench() {
 		FRAPPE_BRANCH="master"
 		ERPNEXT_APPS_JSON="https://raw.githubusercontent.com/frappe/bench/master/install_scripts/erpnext-apps-master.json"
 	fi
-		
+
 	run_cmd sudo su $FRAPPE_USER -c "cd /home/$FRAPPE_USER && bench init frappe-bench --frappe-branch $FRAPPE_BRANCH --apps_path $ERPNEXT_APPS_JSON"
 	echo Setting up first site
 	echo /home/$FRAPPE_USER/frappe-bench > /etc/frappe_bench_dir
 	run_cmd sudo su $FRAPPE_USER -c "cd /home/$FRAPPE_USER/frappe-bench && bench new-site site1.local --mariadb-root-password $MSQ_PASS --admin-password $ADMIN_PASS"
-	run_cmd sudo su $FRAPPE_USER -c "cd /home/$FRAPPE_USER/frappe-bench && bench frappe --install_app erpnext"
-	run_cmd sudo su $FRAPPE_USER -c "cd /home/$FRAPPE_USER/frappe-bench && bench frappe --install_app shopping_cart"
+	run_cmd sudo su $FRAPPE_USER -c "cd /home/$FRAPPE_USER/frappe-bench && bench install-app erpnext"
 	run_cmd bash -c "cd /home/$FRAPPE_USER/frappe-bench && bench setup sudoers $FRAPPE_USER"
 	if $SETUP_PROD; then
 		run_cmd bash -c "cd /home/$FRAPPE_USER/frappe-bench && bench setup production $FRAPPE_USER"
 	fi
+	chown $FRAPPE_USER /home/$FRAPPE_USER/frappe-bench/logs/*
 }
 
 add_user() {
@@ -383,6 +426,7 @@ main() {
 		fi
 		configure_mariadb_centos
 	fi
+	configure_mariadb
 	echo "Adding frappe user"
 	add_user
 	install_bench
